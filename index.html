@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>IntervAI — Intelligent Interview Scheduler</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:#0a0c10; --surface:#111318; --border:#1e2330;
+    --accent:#4fffb0; --accent2:#7b61ff; --warn:#ff6b6b;
+    --muted:#4a5270; --text:#e2e8f0; --text-dim:#8892b0;
+    --vip:#ffd700; --normal:#4fffb0; --low:#7b61ff; --radius:8px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;}
+
+  /* Header */
+  header{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;border-bottom:1px solid var(--border);background:var(--surface);}
+  .logo{display:flex;align-items:center;gap:10px;}
+  .logo-icon{width:32px;height:32px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+  .logo h1{font-size:20px;font-weight:800;}
+  .logo span{color:var(--accent);}
+  .header-actions{display:flex;gap:8px;}
+
+  /* Tabs */
+  .tabs{display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 32px;}
+  .tab{padding:12px 20px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-dim);transition:all 0.2s;}
+  .tab:hover{color:var(--text);}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+  /* Main */
+  .page{display:none;padding:28px 32px;max-width:1200px;margin:0 auto;}
+  .page.active{display:block;}
+
+  /* Buttons */
+  .btn{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;padding:9px 18px;border-radius:var(--radius);border:none;cursor:pointer;transition:all 0.2s;letter-spacing:0.5px;}
+  .btn-primary{background:var(--accent);color:#0a0c10;}
+  .btn-primary:hover{filter:brightness(1.1);transform:translateY(-1px);}
+  .btn-danger{background:transparent;color:var(--warn);border:1px solid var(--warn);}
+  .btn-danger:hover{background:var(--warn);color:#fff;}
+  .btn-ghost{background:transparent;color:var(--text-dim);border:1px solid var(--border);}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+  .btn:disabled{opacity:0.4;cursor:not-allowed;transform:none!important;}
+  .btn-sm{font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 10px;border-radius:4px;border:none;cursor:pointer;font-weight:600;transition:all 0.15s;}
+  .btn-sm-danger{background:rgba(255,107,107,0.1);color:var(--warn);border:1px solid rgba(255,107,107,0.3);}
+  .btn-sm-danger:hover{background:var(--warn);color:#fff;}
+  .btn-sm-warn{background:rgba(255,167,38,0.1);color:#ffab40;border:1px solid rgba(255,167,38,0.3);}
+  .btn-sm-warn:hover{background:#ffab40;color:#000;}
+
+  /* Forms */
+  .form-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;}
+  .form-card h3{font-size:13px;font-weight:700;margin-bottom:16px;color:var(--accent);}
+  .form-row{display:grid;gap:12px;margin-bottom:12px;}
+  .form-row-2{grid-template-columns:1fr 1fr;}
+  .form-row-3{grid-template-columns:1fr 1fr 1fr;}
+  label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+  input,select{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;transition:border-color 0.2s;}
+  input:focus,select:focus{outline:none;border-color:var(--accent);}
+  select option{background:var(--surface);}
+
+  /* Slot checkboxes */
+  .slot-picker{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+  .slot-chip{display:flex;align-items:center;gap:5px;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:5px 10px;cursor:pointer;transition:all 0.15s;font-family:'JetBrains Mono',monospace;font-size:11px;}
+  .slot-chip:hover{border-color:var(--muted);}
+  .slot-chip.selected{border-color:var(--accent);background:rgba(79,255,176,0.08);color:var(--accent);}
+  .slot-chip input[type=checkbox]{display:none;}
+
+  /* Confidence sliders */
+  .conf-sliders{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
+  .conf-row{display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-size:11px;}
+  .conf-row span{width:120px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .conf-row input[type=range]{flex:1;accent-color:var(--accent2);}
+  .conf-row .conf-val{width:35px;text-align:right;color:var(--accent2);}
+
+  /* Data tables */
+  .data-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .data-table th{text-align:left;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:10px 14px;border-bottom:1px solid var(--border);}
+  .data-table td{padding:12px 14px;border-bottom:1px solid var(--border);}
+  .data-table tr:last-child td{border-bottom:none;}
+  .data-table tr:hover td{background:rgba(255,255,255,0.02);}
+
+  /* Panels */
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px;}
+  .panel-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .panel-title{font-size:13px;font-weight:700;}
+
+  /* Stats */
+  .stats-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;}
+  .stat-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+  .stat-value{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;color:var(--accent);}
+  .stat-sub{font-size:11px;color:var(--text-dim);margin-top:3px;}
+
+  /* Schedule table */
+  .slot-time{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--accent);}
+  .slot-duration{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);background:rgba(255,255,255,0.05);padding:2px 6px;border-radius:3px;margin-left:6px;}
+  .status-badge{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;}
+  .status-available{background:rgba(74,82,112,0.3);color:var(--muted);}
+  .status-booked{background:rgba(79,255,176,0.12);color:var(--accent);}
+  .status-cancelled{background:rgba(255,107,107,0.1);color:var(--warn);}
+  .priority-badge{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:3px 8px;border-radius:4px;letter-spacing:1px;}
+  .priority-VIP{background:rgba(255,215,0,0.15);color:var(--vip);}
+  .priority-NORMAL{background:rgba(79,255,176,0.12);color:var(--normal);}
+  .priority-LOW{background:rgba(123,97,255,0.15);color:var(--low);}
+
+  .conf-bar{display:flex;align-items:center;gap:8px;}
+  .conf-track{width:60px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+  .conf-fill{height:100%;background:var(--accent2);border-radius:2px;}
+  .conf-val-sm{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);}
+
+  /* Fairness */
+  .fairness-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:18px;}
+  .fairness-section h4{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+  .dist-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .dist-bar-wrap{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin:0 10px;}
+  .dist-bar{height:100%;border-radius:3px;transition:width 0.6s ease;}
+  .bar-VIP{background:var(--vip);} .bar-NORMAL{background:var(--normal);} .bar-LOW{background:var(--low);}
+  .dist-count{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);width:16px;text-align:right;}
+  .fair-ok{background:rgba(79,255,176,0.06);border:1px solid rgba(79,255,176,0.2);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--accent);margin:0 18px 16px;}
+  .violation-alert{background:rgba(255,107,107,0.08);border:1px solid rgba(255,107,107,0.3);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--warn);margin:0 18px 16px;}
+
+  /* Log */
+  .log-area{padding:14px 18px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);max-height:160px;overflow-y:auto;line-height:1.8;}
+  .log-entry{display:flex;gap:10px;}
+  .log-time{color:var(--muted);white-space:nowrap;}
+  .log-ok{color:var(--accent);} .log-warn{color:#ffab40;} .log-err{color:var(--warn);}
+
+  .empty{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
+  .empty-icon{font-size:36px;margin-bottom:10px;}
+
+  #toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--accent);color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:12px;padding:10px 18px;border-radius:var(--radius);transform:translateY(60px);opacity:0;transition:all 0.3s;z-index:999;}
+  #toast.show{transform:translateY(0);opacity:1;}
+  #toast.error{border-color:var(--warn);color:var(--warn);}
+
+  ::-webkit-scrollbar{width:4px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+  .section-gap{margin-bottom:24px;}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;background:rgba(123,97,255,0.15);color:var(--accent2);padding:2px 7px;border-radius:4px;margin:2px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🧠</div>
+    <h1>Interv<span>AI</span></h1>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-ghost" onclick="resetSchedule()">↺ Clear Schedule</button>
+    <button class="btn btn-primary" id="scheduleBtn" onclick="runSchedule()">▶ Run CSP Scheduler</button>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('dashboard')">📊 Dashboard</div>
+  <div class="tab" onclick="showTab('slots')">🕐 Time Slots</div>
+  <div class="tab" onclick="showTab('interviewers')">🧑‍💼 Interviewers</div>
+  <div class="tab" onclick="showTab('candidates')">👤 Candidates</div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="page active" id="tab-dashboard">
+  <div class="stats-strip">
+    <div class="stat-card"><div class="stat-label">Candidates</div><div class="stat-value" id="statTotal">—</div></div>
+    <div class="stat-card"><div class="stat-label">Scheduled</div><div class="stat-value" id="statScheduled">—</div></div>
+    <div class="stat-card"><div class="stat-label">Avg Confidence</div><div class="stat-value" id="statConf">—</div></div>
+    <div class="stat-card"><div class="stat-label">Fairness</div><div class="stat-value" id="statFair">—</div><div class="stat-sub" id="statFairSub"></div></div>
+  </div>
+
+  <div class="panel section-gap">
+    <div class="panel-header">
+      <div class="panel-title">📅 Schedule</div>
+      <span id="scheduleStatus" style="font-size:11px;color:var(--muted)">Run the scheduler to see assignments</span>
+    </div>
+    <div id="scheduleBody">
+      <div class="empty"><div class="empty-icon">🗓️</div>Add data in the other tabs, then click <strong>Run CSP Scheduler</strong></div>
+    </div>
+  </div>
+
+  <div class="panel section-gap" id="fairnessPanel" style="display:none">
+    <div class="panel-header"><div class="panel-title">⚖️ Fairness Analysis</div></div>
+    <div id="fairnessBody"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><div class="panel-title">📋 Activity Log</div></div>
+    <div class="log-area" id="logArea">
+      <div class="log-entry"><span class="log-time">[boot]</span><span>IntervAI ready.</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- SLOTS -->
+<div class="page" id="tab-slots">
+  <div class="two-col">
+    <div>
+      <div class="form-card">
+        <h3>+ Add Time Slot</h3>
+        <div class="form-row form-row-2">
+          <div><label>Date</label><input type="date" id="slotDate"/></div>
+          <div><label>Duration</label>
+            <select id="slotDuration">
+              <option value="30">30 minutes</option>
+              <option value="60">60 minutes</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row form-row-2">
+          <div><label>Start Time</label><input type="time" id="slotStart"/></div>
+          <div><label>End Time</label><input type="time" id="slotEnd"/></div>
+        </div>
+        <button class="btn btn-primary" onclick="addSlot()">Add Slot</button>
+      </div>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">All Slots</div></div>
+        <div id="slotTableWrap">
+          <div class="empty"><div class="empty-icon">🕐</div>No slots yet</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- INTERVIEWERS -->
+<div class="page" id="tab-interviewers">
+  <div class="two-col">
+    <div>
+      <div class="form-card">
+        <h3>+ Add Interviewer</h3>
+        <div class="form-row">
+          <div><label>Full Name</label><input type="text" id="iwName" placeholder="e.g. Arjun Mehta"/></div>
+        </div>
+        <div class="form-row">
+          <div><label>Domains (comma separated)</label><input type="text" id="iwDomains" placeholder="e.g. backend, system design"/></div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label>Available Slots</label>
+            <div class="slot-picker" id="iwSlotPicker"><em style="color:var(--muted);font-size:12px">Add slots first</em></div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="addInterviewer()">Add Interviewer</button>
+      </div>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">All Interviewers</div></div>
+        <div id="iwTableWrap">
+          <div class="empty"><div class="empty-icon">🧑‍💼</div>No interviewers yet</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CANDIDATES -->
+<div class="page" id="tab-candidates">
+  <div class="two-col">
+    <div>
+      <div class="form-card">
+        <h3>+ Add Candidate</h3>
+        <div class="form-row form-row-2">
+          <div><label>Full Name</label><input type="text" id="candName" placeholder="e.g. Aditya Kumar"/></div>
+          <div><label>Priority</label>
+            <select id="candPriority">
+              <option value="VIP">VIP</option>
+              <option value="NORMAL" selected>Normal</option>
+              <option value="LOW">Low</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row form-row-2">
+          <div><label>Required Domain</label><input type="text" id="candDomain" placeholder="e.g. backend"/></div>
+          <div><label>Preferred Duration</label>
+            <select id="candDuration">
+              <option value="30">30 minutes</option>
+              <option value="60">60 minutes</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label>Available Slots (select all that apply)</label>
+            <div class="slot-picker" id="candSlotPicker"><em style="color:var(--muted);font-size:12px">Add slots first</em></div>
+          </div>
+        </div>
+        <div id="confSlidersWrap" style="display:none">
+          <label style="margin-bottom:8px;display:block">Availability Confidence per Slot</label>
+          <div class="conf-sliders" id="confSliders"></div>
+        </div>
+        <br/>
+        <button class="btn btn-primary" onclick="addCandidate()">Add Candidate</button>
+      </div>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">All Candidates</div>
+        </div>
+        <div id="candTableWrap">
+          <div class="empty"><div class="empty-icon">👤</div>No candidates yet</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+let allSlots = [], allInterviewers = [], allCandidates = [];
+let selectedIwSlots = new Set();
+let selectedCandSlots = new Set();
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const names = ['dashboard','slots','interviewers','candidates'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'interviewers') renderIwSlotPicker();
+  if (name === 'candidates') renderCandSlotPicker();
+}
+
+// ── Load state ────────────────────────────────────────────────────────────
+
+async function loadState() {
+  const r = await fetch('/api/state');
+  const d = await r.json();
+  allSlots = d.slots;
+  allInterviewers = d.interviewers;
+  allCandidates = d.candidates;
+  renderSlotTable();
+  renderIwTable();
+  renderCandTable();
+  updateStats();
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────
+
+function updateStats() {
+  document.getElementById('statTotal').textContent = allCandidates.length;
+  document.getElementById('statScheduled').textContent = allCandidates.filter(c=>c.assigned_slot).length;
+}
+
+// ── SLOTS ─────────────────────────────────────────────────────────────────
+
+async function addSlot() {
+  const date  = document.getElementById('slotDate').value;
+  const start = document.getElementById('slotStart').value;
+  const end   = document.getElementById('slotEnd').value;
+  const dur   = document.getElementById('slotDuration').value;
+  if (!date || !start || !end) { showToast('Fill all slot fields', true); return; }
+  await fetch('/api/slots', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({date, start_time:start, end_time:end, duration_minutes:dur})});
+  addLog('ok', `Slot added: ${date} ${start}–${end} (${dur}min)`);
+  showToast('Slot added!');
+  await loadState();
+}
+
+async function deleteSlot(id) {
+  await fetch('/api/slots/' + id, {method:'DELETE'});
+  addLog('warn', 'Slot ' + id + ' deleted');
+  await loadState();
+}
+
+function renderSlotTable() {
+  const wrap = document.getElementById('slotTableWrap');
+  if (!allSlots.length) { wrap.innerHTML = '<div class="empty"><div class="empty-icon">🕐</div>No slots yet</div>'; return; }
+  wrap.innerHTML = `<table class="data-table">
+    <thead><tr><th>Date</th><th>Time</th><th>Duration</th><th>Status</th><th></th></tr></thead>
+    <tbody>${allSlots.map(s=>`<tr>
+      <td>${s.date}</td>
+      <td><span class="slot-time">${s.start_time}–${s.end_time}</span></td>
+      <td><span class="slot-duration">${s.duration_minutes}m</span></td>
+      <td><span class="status-badge status-${s.status}">${s.status.toUpperCase()}</span></td>
+      <td><button class="btn-sm btn-sm-danger" onclick="deleteSlot('${s.slot_id}')">✕</button></td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+// ── INTERVIEWERS ──────────────────────────────────────────────────────────
+
+function renderIwSlotPicker() {
+  const el = document.getElementById('iwSlotPicker');
+  if (!allSlots.length) { el.innerHTML = '<em style="color:var(--muted);font-size:12px">Add slots first</em>'; return; }
+  el.innerHTML = allSlots.map(s => {
+    const sel = selectedIwSlots.has(s.slot_id);
+    return `<div class="slot-chip ${sel?'selected':''}" onclick="toggleIwSlot('${s.slot_id}', this)">
+      ${s.date} ${s.start_time}
+    </div>`;
+  }).join('');
+}
+
+function toggleIwSlot(id, el) {
+  if (selectedIwSlots.has(id)) { selectedIwSlots.delete(id); el.classList.remove('selected'); }
+  else { selectedIwSlots.add(id); el.classList.add('selected'); }
+}
+
+async function addInterviewer() {
+  const name    = document.getElementById('iwName').value.trim();
+  const domains = document.getElementById('iwDomains').value.trim();
+  if (!name || !domains) { showToast('Fill name and domains', true); return; }
+  await fetch('/api/interviewers', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name, domains, slot_ids: [...selectedIwSlots]})});
+  document.getElementById('iwName').value = '';
+  document.getElementById('iwDomains').value = '';
+  selectedIwSlots.clear();
+  addLog('ok', `Interviewer added: ${name}`);
+  showToast('Interviewer added!');
+  await loadState();
+  renderIwSlotPicker();
+}
+
+async function deleteInterviewer(id) {
+  await fetch('/api/interviewers/' + id, {method:'DELETE'});
+  addLog('warn', 'Interviewer ' + id + ' deleted');
+  await loadState();
+}
+
+async function markUnavailable(id) {
+  const r = await fetch('/api/reschedule/interviewer/' + id, {method:'POST'});
+  const d = await r.json();
+  allCandidates = d.candidates; allSlots = d.slots;
+  renderCandTable(); renderSlotTable(); updateStats();
+  addLog('warn', `Interviewer ${id} unavailable. ${d.rescheduled||0}/${d.displaced_count||0} rescheduled.`);
+  showToast(`${d.rescheduled||0} candidate(s) rescheduled`);
+}
+
+function renderIwTable() {
+  const wrap = document.getElementById('iwTableWrap');
+  if (!allInterviewers.length) { wrap.innerHTML = '<div class="empty"><div class="empty-icon">🧑‍💼</div>No interviewers yet</div>'; return; }
+  wrap.innerHTML = `<table class="data-table">
+    <thead><tr><th>Name</th><th>Domains</th><th>Slots</th><th></th></tr></thead>
+    <tbody>${allInterviewers.map(i=>`<tr>
+      <td><strong>${i.name}</strong></td>
+      <td>${i.domains.map(d=>`<span class="tag">${d}</span>`).join('')}</td>
+      <td><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">${i.available_slots.length} slots</span></td>
+      <td style="display:flex;gap:6px">
+        <button class="btn-sm btn-sm-warn" onclick="markUnavailable('${i.interviewer_id}')">Unavail.</button>
+        <button class="btn-sm btn-sm-danger" onclick="deleteInterviewer('${i.interviewer_id}')">✕</button>
+      </td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+// ── CANDIDATES ────────────────────────────────────────────────────────────
+
+function renderCandSlotPicker() {
+  const el = document.getElementById('candSlotPicker');
+  if (!allSlots.length) { el.innerHTML = '<em style="color:var(--muted);font-size:12px">Add slots first</em>'; return; }
+  el.innerHTML = allSlots.map(s => {
+    const sel = selectedCandSlots.has(s.slot_id);
+    return `<div class="slot-chip ${sel?'selected':''}" onclick="toggleCandSlot('${s.slot_id}', this)">
+      ${s.date} ${s.start_time} (${s.duration_minutes}m)
+    </div>`;
+  }).join('');
+  updateConfSliders();
+}
+
+function toggleCandSlot(id, el) {
+  if (selectedCandSlots.has(id)) { selectedCandSlots.delete(id); el.classList.remove('selected'); }
+  else { selectedCandSlots.add(id); el.classList.add('selected'); }
+  updateConfSliders();
+}
+
+function updateConfSliders() {
+  const wrap = document.getElementById('confSlidersWrap');
+  const cont = document.getElementById('confSliders');
+  if (!selectedCandSlots.size) { wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  const slotMap = Object.fromEntries(allSlots.map(s=>[s.slot_id,s]));
+  cont.innerHTML = [...selectedCandSlots].map(sid => {
+    const s = slotMap[sid];
+    if (!s) return '';
+    return `<div class="conf-row">
+      <span>${s.date} ${s.start_time}</span>
+      <input type="range" min="0" max="100" value="80" id="conf_${sid}"
+        oninput="document.getElementById('confval_${sid}').textContent=this.value+'%'"/>
+      <span class="conf-val" id="confval_${sid}">80%</span>
+    </div>`;
+  }).join('');
+}
+
+async function addCandidate() {
+  const name     = document.getElementById('candName').value.trim();
+  const priority = document.getElementById('candPriority').value;
+  const domain   = document.getElementById('candDomain').value.trim();
+  const duration = document.getElementById('candDuration').value;
+  if (!name || !domain) { showToast('Fill name and domain', true); return; }
+  if (!selectedCandSlots.size) { showToast('Select at least one slot', true); return; }
+
+  const slot_ids = [...selectedCandSlots];
+  const confidence_scores = {};
+  slot_ids.forEach(sid => {
+    const el = document.getElementById('conf_' + sid);
+    confidence_scores[sid] = el ? parseFloat(el.value)/100 : 0.8;
+  });
+
+  await fetch('/api/candidates', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name, priority, required_domain:domain, preferred_duration:duration, slot_ids, confidence_scores})});
+
+  document.getElementById('candName').value = '';
+  document.getElementById('candDomain').value = '';
+  selectedCandSlots.clear();
+  document.getElementById('confSlidersWrap').style.display='none';
+  addLog('ok', `Candidate added: ${name} (${priority})`);
+  showToast('Candidate added!');
+  await loadState();
+  renderCandSlotPicker();
+}
+
+async function deleteCandidate(id) {
+  await fetch('/api/candidates/' + id, {method:'DELETE'});
+  addLog('warn', 'Candidate ' + id + ' deleted');
+  await loadState();
+}
+
+async function cancelCandidate(id) {
+  const r = await fetch('/api/reschedule/candidate/' + id, {method:'POST'});
+  const d = await r.json();
+  allCandidates = d.candidates; allSlots = d.slots;
+  renderCandTable(); renderSlotTable(); updateStats();
+  addLog('warn', `Candidate ${id} cancelled. Slot ${d.freed_slot} freed.`);
+  showToast('Candidate cancelled, slot freed.');
+}
+
+function renderCandTable() {
+  const wrap = document.getElementById('candTableWrap');
+  if (!allCandidates.length) { wrap.innerHTML = '<div class="empty"><div class="empty-icon">👤</div>No candidates yet</div>'; return; }
+  wrap.innerHTML = `<table class="data-table">
+    <thead><tr><th>Name</th><th>Priority</th><th>Domain</th><th>Dur.</th><th>Assigned</th><th></th></tr></thead>
+    <tbody>${allCandidates.map(c=>`<tr>
+      <td><strong>${c.name}</strong></td>
+      <td><span class="priority-badge priority-${c.priority}">${c.priority}</span></td>
+      <td><span class="tag">${c.required_domain}</span></td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${c.preferred_duration}m</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${c.assigned_slot?'var(--accent)':'var(--muted)'}">
+        ${c.assigned_slot ? `✓ ${c.assigned_slot}` : '—'}
+      </td>
+      <td style="display:flex;gap:5px">
+        ${c.assigned_slot ? `<button class="btn-sm btn-sm-warn" onclick="cancelCandidate('${c.candidate_id}')">Cancel</button>` : ''}
+        <button class="btn-sm btn-sm-danger" onclick="deleteCandidate('${c.candidate_id}')">✕</button>
+      </td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+// ── Scheduler ─────────────────────────────────────────────────────────────
+
+async function runSchedule() {
+  const btn = document.getElementById('scheduleBtn');
+  btn.disabled=true; btn.textContent='⏳ Solving…';
+  const r = await fetch('/api/schedule', {method:'POST'});
+  const d = await r.json();
+  btn.disabled=false; btn.textContent='▶ Run CSP Scheduler';
+
+  if (!d.success) { showToast(d.message, true); addLog('err', d.message); return; }
+
+  allCandidates = d.candidates; allSlots = d.slots;
+  renderCandTable(); renderSlotTable(); updateStats();
+  renderScheduleTable(d);
+  renderFairness(d.fairness);
+
+  const sched = d.candidates.filter(c=>c.assigned_slot).length;
+  document.getElementById('statScheduled').textContent = sched;
+  document.getElementById('statConf').textContent = (d.confidence.average_confidence*100).toFixed(0)+'%';
+  const fair = d.fairness.fair;
+  document.getElementById('statFair').textContent = fair?'✓':'✗';
+  document.getElementById('statFair').style.color = fair?'var(--accent)':'var(--warn)';
+  document.getElementById('statFairSub').textContent = fair?'All constraints met':`${d.fairness.violations.length} violation(s)`;
+
+  addLog('ok', `CSP solved. ${sched} candidates assigned. Avg confidence ${(d.confidence.average_confidence*100).toFixed(0)}%`);
+  showToast('Schedule generated!');
+  showTab('dashboard');
+}
+
+function renderScheduleTable(data) {
+  const slotMap = Object.fromEntries(data.slots.map(s=>[s.slot_id,s]));
+  const candMap = Object.fromEntries(data.candidates.map(c=>[c.candidate_id,c]));
+  const iwMap   = Object.fromEntries(allInterviewers.map(i=>[i.interviewer_id,i]));
+
+  const rows = data.slots.map(slot => {
+    const cand = slot.assigned_candidate ? candMap[slot.assigned_candidate] : null;
+    const iw   = slot.assigned_interviewer ? iwMap[slot.assigned_interviewer] : null;
+    const conf = cand ? (cand.confidence_scores?.[slot.slot_id]||0.5) : 0;
+    return `<tr>
+      <td><span class="slot-time">${slot.start_time}–${slot.end_time}</span><span class="slot-duration">${slot.duration_minutes}m</span></td>
+      <td>${slot.date}</td>
+      <td><span class="status-badge status-${slot.status}">${slot.status.toUpperCase()}</span></td>
+      <td>${cand?`<strong>${cand.name}</strong><br><span style="font-size:10px;color:var(--muted)">${cand.required_domain}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
+      <td>${iw?iw.name:'<span style="color:var(--muted)">—</span>'}</td>
+      <td>${cand?`<div class="conf-bar"><div class="conf-track"><div class="conf-fill" style="width:${conf*100}%"></div></div><span class="conf-val-sm">${(conf*100).toFixed(0)}%</span></div>`:'—'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('scheduleBody').innerHTML = `
+    <table class="data-table">
+      <thead><tr><th>Time</th><th>Date</th><th>Status</th><th>Candidate</th><th>Interviewer</th><th>Confidence</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  document.getElementById('scheduleStatus').textContent =
+    `${data.slots.filter(s=>s.status==='booked').length} slots booked`;
+}
+
+function renderFairness(f) {
+  document.getElementById('fairnessPanel').style.display='block';
+  const morn=f.morning_distribution||{}, aftn=f.afternoon_distribution||{};
+  const totalM=Object.values(morn).reduce((a,b)=>a+b,0);
+  const totalA=Object.values(aftn).reduce((a,b)=>a+b,0);
+  const makeRows=(dist,total)=>['VIP','NORMAL','LOW'].map(p=>{
+    const val=dist[p]||0, pct=total>0?(val/total*100):0;
+    return `<div class="dist-row">
+      <span class="priority-badge priority-${p}" style="font-size:9px;width:60px">${p}</span>
+      <div class="dist-bar-wrap"><div class="dist-bar bar-${p}" style="width:${pct}%"></div></div>
+      <span class="dist-count">${val}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('fairnessBody').innerHTML = `
+    ${f.fair?'<div class="fair-ok">✓ Fairness constraints satisfied.</div>':'<div class="violation-alert">⚠ '+f.violations.join('; ')+'</div>'}
+    <div class="fairness-grid">
+      <div><h4>☀️ Morning</h4>${makeRows(morn,totalM)}</div>
+      <div><h4>🌆 Afternoon</h4>${makeRows(aftn,totalA)}</div>
+    </div>`;
+}
+
+async function resetSchedule() {
+  await fetch('/api/reset', {method:'POST'});
+  await loadState();
+  document.getElementById('scheduleBody').innerHTML='<div class="empty"><div class="empty-icon">🗓️</div>Schedule cleared. Data preserved.</div>';
+  document.getElementById('fairnessPanel').style.display='none';
+  document.getElementById('statScheduled').textContent='—';
+  document.getElementById('statConf').textContent='—';
+  document.getElementById('statFair').textContent='—';
+  document.getElementById('statFairSub').textContent='';
+  document.getElementById('scheduleStatus').textContent='Run the scheduler to see assignments';
+  addLog('warn','Schedule reset. All data preserved.');
+  showToast('Schedule cleared.');
+}
+
+function addLog(type,msg){
+  const area=document.getElementById('logArea');
+  const time=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const div=document.createElement('div');
+  div.className='log-entry';
+  div.innerHTML=`<span class="log-time">[${time}]</span><span class="log-${type}">${msg}</span>`;
+  area.appendChild(div); area.scrollTop=area.scrollHeight;
+}
+
+let toastTimer;
+function showToast(msg,error=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='show'+(error?' error':'');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.className='',3000);
+}
+
+loadState();
+</script>
+</body>
+</html>
